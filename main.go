@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/alex-c96/gowebdev/internal/apiconfig"
+	"github.com/alex-c96/gowebdev/internal/database"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -14,13 +15,21 @@ func main() {
 	r := chi.NewRouter()
 	apiR := chi.NewRouter()
 	adminR := chi.NewRouter()
-	apiCfg := new(apiconfig.ApiConfig)
+	DB, err := database.NewDB(database.DatabaseString)
+	if err != nil {
+		log.Printf("Failed to initialize database %v\n", err)
+		return
+	}
+	apiCfg := apiconfig.ApiConfig{
+		Database: DB,
+	}
 	fsHandler := apiCfg.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filePathRoot))))
 	r.Handle("/app/", fsHandler)
 	r.Handle("/app*", fsHandler)
 	apiR.Get("/healthz", handlerReadiness)
 	apiR.Get("/reset", apiCfg.Reset)
-	apiR.Post("/validate_chirp", apiconfig.ValidateChirp)
+	apiR.Post("/chirps", apiCfg.PostChirp)
+	apiR.Get("/chirps", apiCfg.GetChirps)
 	adminR.Get("/metrics", apiCfg.GetHits)
 	r.Mount("/admin", adminR)
 	r.Mount("/api", apiR)

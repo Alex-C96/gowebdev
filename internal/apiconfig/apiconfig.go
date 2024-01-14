@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/alex-c96/gowebdev/internal/database"
 )
 
 type ApiConfig struct {
 	fileserverHits int
+	Database       *database.DB
 }
 
 func (cfg *ApiConfig) MiddlewareMetricsInc(next http.Handler) http.Handler {
@@ -41,12 +44,21 @@ func (cfg *ApiConfig) Reset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hits reset to 0"))
 }
 
-func ValidateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.Database.GetChirps()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not read chirps from DB")
+	}
+	respondWithJSON(w, 200, chirps)
+}
+
+func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	type chirp struct {
 		Body string `json:"body"`
 	}
 	type successDetails struct {
-		Valid bool `json:"valid"`
+		Body string `json:"body"`
+		ID   int    `json:"id"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -58,13 +70,22 @@ func ValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 	length := len(chirpResp.Body)
 	const maxChirpLength = 140
+
 	if length > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
 		return
 	}
-	respondWithJSON(w, http.StatusOK, successDetails{
-		Valid: true,
-	})
+
+	newChirp := successDetails{
+		Body: chirpResp.Body,
+		ID:   cfg.Database.ChirpId,
+	}
+	respondWithJSON(w, 201, newChirp)
+	responseChirp, err := cfg.Database.CreateChirp(chirpResp.Body)
+	if err != nil {
+		log.Printf("Db input failure %v", err)
+	}
+	fmt.Println(responseChirp)
 }
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
