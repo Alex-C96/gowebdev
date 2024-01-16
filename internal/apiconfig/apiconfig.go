@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/alex-c96/gowebdev/internal/database"
+	"github.com/go-chi/chi/v5"
 )
 
 type ApiConfig struct {
@@ -52,6 +54,21 @@ func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, 200, chirps)
 }
 
+func (cfg *ApiConfig) GetChirpId(w http.ResponseWriter, r *http.Request) {
+	chirpId := chi.URLParam(r, "chirpID")
+	num, err := strconv.Atoi(chirpId)
+	if err != nil {
+		respondWithError(w, 400, "invalid chirp id")
+		return
+	}
+	chirp, err := cfg.Database.GetChirpByID(num)
+	if err != nil {
+		respondWithError(w, 404, err.Error())
+		return
+	}
+	respondWithJSON(w, 200, chirp)
+}
+
 func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	type chirp struct {
 		Body string `json:"body"`
@@ -80,7 +97,9 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		Body: chirpResp.Body,
 		ID:   cfg.Database.ChirpId,
 	}
+
 	respondWithJSON(w, 201, newChirp)
+
 	responseChirp, err := cfg.Database.CreateChirp(chirpResp.Body)
 	if err != nil {
 		log.Printf("Db input failure %v", err)

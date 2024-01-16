@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"sort"
@@ -52,8 +53,6 @@ func ensureDB() error {
 }
 
 func (db *DB) CreateChirp(body string) (Chirp, error) {
-	db.mux.Lock()
-	defer db.mux.Unlock()
 	DbStruct, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err
@@ -67,6 +66,18 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.ChirpId++
 
 	return chirp, err
+}
+
+func (db *DB) GetChirpByID(id int) (Chirp, error) {
+	chirps, err := db.loadDB()
+	if err != nil {
+		return Chirp{}, err
+	}
+	dat, ok := chirps.Chirps[id]
+	if !ok {
+		return Chirp{}, errors.New("Chirp doesn't exist in the database")
+	}
+	return dat, nil
 }
 
 func (db *DB) loadDB() (DBStructure, error) {

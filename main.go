@@ -30,6 +30,7 @@ func main() {
 	apiR.Get("/reset", apiCfg.Reset)
 	apiR.Post("/chirps", apiCfg.PostChirp)
 	apiR.Get("/chirps", apiCfg.GetChirps)
+	apiR.Get("/chirps/{chirpID}", apiCfg.GetChirpId)
 	adminR.Get("/metrics", apiCfg.GetHits)
 	r.Mount("/admin", adminR)
 	r.Mount("/api", apiR)
